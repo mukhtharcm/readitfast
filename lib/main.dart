@@ -25,9 +25,10 @@ class MainApp extends StatelessWidget {
       child: MaterialApp(
         title: 'ReadItFast',
         theme: FlexThemeData.light(
-          scheme: FlexScheme.blue,
+          scheme: FlexScheme.materialBaseline,
           textTheme: GoogleFonts.interTextTheme(),
         ),
+        themeMode: ThemeMode.system,
         darkTheme: FlexThemeData.dark(
           scheme: FlexScheme.blue,
           textTheme: GoogleFonts.interTextTheme(),
