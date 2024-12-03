@@ -18,7 +18,10 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => TextToSpeechBloc(audioPlayer: di.sl()),
+      create: (_) => TextToSpeechBloc(
+        audioPlayer: di.sl(),
+        repository: di.sl(),
+      ),
       child: MaterialApp(
         title: 'ReadItFast',
         theme: FlexThemeData.light(

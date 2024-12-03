@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:just_audio/just_audio.dart';
 import 'dart:math';
 import '../bloc/text_to_speech_bloc.dart';
 
@@ -11,15 +12,18 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   bool _isPlaying = false;
   late AnimationController _animationController;
   late Animation<double> _animation;
+  late AudioPlayer audioPlayer;
 
   @override
   void initState() {
     super.initState();
+    audioPlayer = context.read<TextToSpeechBloc>().audioPlayer;
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -40,12 +44,26 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.dispose();
   }
 
+  String _getTimeAgo(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+    if (difference.inDays > 0) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minutes ago';
+    } else {
+      return '${difference.inSeconds} seconds ago';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       body: BlocConsumer<TextToSpeechBloc, TextToSpeechState>(
         listener: (context, state) {
           if (state is TextToSpeechError) {
@@ -121,7 +139,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         style: GoogleFonts.poppins(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onBackground,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -153,9 +171,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             height: 1.5,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Paste your article, text, or anything you want to read faster...',
+                            hintText:
+                                'Paste your article, text, or anything you want to read faster...',
                             hintStyle: GoogleFonts.inter(
-                              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withOpacity(0.7),
                             ),
                             filled: true,
                             fillColor: theme.colorScheme.surface,
@@ -166,7 +186,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide(
-                                color: theme.colorScheme.outline.withOpacity(0.2),
+                                color:
+                                    theme.colorScheme.outline.withOpacity(0.2),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -203,7 +224,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     Text(
                                       'Converting to audio...',
                                       style: GoogleFonts.inter(
-                                        color: theme.colorScheme.onPrimaryContainer,
+                                        color: theme
+                                            .colorScheme.onPrimaryContainer,
                                       ),
                                     ),
                                   ],
@@ -214,11 +236,29 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 children: [
                                   FilledButton.icon(
                                     onPressed: () {
-                                      if (_textController.text.isNotEmpty) {
-                                        context.read<TextToSpeechBloc>().add(
-                                              ConvertTextToSpeech(_textController.text),
-                                            );
+                                      if (_textController.text.trim().isEmpty) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Please enter some text to convert',
+                                              style: GoogleFonts.inter(),
+                                            ),
+                                            backgroundColor:
+                                                theme.colorScheme.error,
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        );
+                                        return;
                                       }
+                                      context.read<TextToSpeechBloc>().add(
+                                            ConvertTextToSpeech(
+                                                _textController.text),
+                                          );
                                     },
                                     style: FilledButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
@@ -242,7 +282,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     const SizedBox(width: 16),
                                     Container(
                                       decoration: BoxDecoration(
-                                        color: theme.colorScheme.secondaryContainer,
+                                        color: theme
+                                            .colorScheme.secondaryContainer,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: IconButton.filledTonal(
@@ -251,13 +292,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                             _isPlaying = !_isPlaying;
                                           });
                                           context.read<TextToSpeechBloc>().add(
-                                                _isPlaying ? PauseAudio() : PlayAudio(),
+                                                _isPlaying
+                                                    ? PauseAudio()
+                                                    : PlayAudio(),
                                               );
                                         },
                                         icon: AnimatedSwitcher(
-                                          duration: const Duration(milliseconds: 200),
+                                          duration:
+                                              const Duration(milliseconds: 200),
                                           child: Icon(
-                                            _isPlaying ? Icons.pause : Icons.play_arrow,
+                                            _isPlaying
+                                                ? Icons.pause
+                                                : Icons.play_arrow,
                                             key: ValueKey(_isPlaying),
                                           ),
                                         ),
@@ -268,29 +314,69 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               ),
                       ),
                       const SizedBox(height: 48),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Recent Conversions',
-                            style: GoogleFonts.poppins(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
+                      if (state is TextToSpeechSuccess &&
+                          state.recentConversions.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            Text(
+                              'Recent Conversations',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
                             ),
+                            const Spacer(),
+                            Text(
+                              '${state.recentConversions.length} items',
+                              style: GoogleFonts.inter(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ] else if (state is TextToSpeechSuccess) ...[
+                        Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.history,
+                                size: 48,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No conversations yet',
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Enter some text above to get started',
+                                style: GoogleFonts.inter(
+                                  color: theme.colorScheme.onSurfaceVariant
+                                      .withOpacity(0.7),
+                                ),
+                              ),
+                            ],
                           ),
-                          TextButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.history),
-                            label: const Text('View All'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                        ),
+                      ],
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: 3,
+                        itemCount: state is TextToSpeechSuccess
+                            ? state.recentConversions.length
+                            : 0,
                         itemBuilder: (context, index) {
+                          final conversion = (state as TextToSpeechSuccess)
+                              .recentConversions[index];
+                          final timestamp =
+                              DateTime.parse(conversion.timestamp);
+                          final timeAgo = _getTimeAgo(timestamp);
                           return Container(
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
@@ -326,20 +412,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 ),
                               ),
                               title: Text(
-                                'Previous Text ${index + 1}',
+                                conversion.text.length > 50
+                                    ? '${conversion.text.substring(0, 50)}...'
+                                    : conversion.text,
                                 style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               subtitle: Text(
-                                'Converted 2 hours ago',
+                                'Converted $timeAgo • ${conversion.duration.toStringAsFixed(1)}s',
                                 style: GoogleFonts.inter(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.play_circle_outline),
-                                onPressed: () {},
+                              trailing: IconButton.filledTonal(
+                                icon: const Icon(Icons.play_arrow),
+                                onPressed: () async {
+                                  await audioPlayer.setUrl(conversion.audioUrl);
+                                  context
+                                      .read<TextToSpeechBloc>()
+                                      .add(PlayAudio());
+                                },
                               ),
                             ),
                           );

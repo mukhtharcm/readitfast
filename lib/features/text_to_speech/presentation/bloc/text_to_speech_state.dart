@@ -11,7 +11,24 @@ class TextToSpeechInitial extends TextToSpeechState {}
 
 class TextToSpeechLoading extends TextToSpeechState {}
 
-class TextToSpeechSuccess extends TextToSpeechState {}
+class TextToSpeechSuccess extends TextToSpeechState {
+  final List<TTSResponse> recentConversions;
+  
+  const TextToSpeechSuccess({
+    this.recentConversions = const [],
+  });
+  
+  @override
+  List<Object> get props => [recentConversions];
+  
+  TextToSpeechSuccess copyWith({
+    List<TTSResponse>? recentConversions,
+  }) {
+    return TextToSpeechSuccess(
+      recentConversions: recentConversions ?? this.recentConversions,
+    );
+  }
+}
 
 class TextToSpeechError extends TextToSpeechState {
   final String message;

@@ -1,14 +1,22 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:just_audio/just_audio.dart';
+import '../../data/models/tts_response.dart';
+import '../../data/repositories/tts_repository.dart';
 
 part 'text_to_speech_event.dart';
 part 'text_to_speech_state.dart';
 
 class TextToSpeechBloc extends Bloc<TextToSpeechEvent, TextToSpeechState> {
   final AudioPlayer audioPlayer;
+  final TTSRepository repository;
+  final List<TTSResponse> _recentConversions = [];
+  static const int _maxRecentConversions = 10;
 
-  TextToSpeechBloc({required this.audioPlayer}) : super(TextToSpeechInitial()) {
+  TextToSpeechBloc({
+    required this.audioPlayer,
+    required this.repository,
+  }) : super(TextToSpeechInitial()) {
     on<ConvertTextToSpeech>(_onConvertTextToSpeech);
     on<PlayAudio>(_onPlayAudio);
     on<PauseAudio>(_onPauseAudio);
@@ -20,8 +28,16 @@ class TextToSpeechBloc extends Bloc<TextToSpeechEvent, TextToSpeechState> {
   ) async {
     emit(TextToSpeechLoading());
     try {
-      // TODO: Implement API call to convert text to speech
-      emit(TextToSpeechSuccess());
+      final response = await repository.convertTextToSpeech(event.text);
+      
+      // Add to recent conversations
+      _recentConversions.insert(0, response);
+      if (_recentConversions.length > _maxRecentConversions) {
+        _recentConversions.removeLast();
+      }
+      
+      await audioPlayer.setUrl(response.audioUrl);
+      emit(TextToSpeechSuccess(recentConversions: List.from(_recentConversions)));
     } catch (e) {
       emit(TextToSpeechError(e.toString()));
     }
