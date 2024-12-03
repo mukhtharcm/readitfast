@@ -14,7 +14,7 @@ class _TTSApiClient implements TTSApiClient {
     this.baseUrl,
     this.errorLogger,
   }) {
-    baseUrl ??= 'http://localhost:8787';
+    baseUrl ??= 'https://lol.76545689.xyz';
   }
 
   final Dio _dio;

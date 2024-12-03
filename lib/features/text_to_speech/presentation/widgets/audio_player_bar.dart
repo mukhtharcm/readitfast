@@ -25,9 +25,39 @@ class AudioPlayerBar extends StatelessWidget {
             PositionData(position, bufferedPosition, duration ?? Duration.zero),
       );
 
+  void _handlePlayPause() async {
+    if (audioPlayer.position >= (audioPlayer.duration ?? Duration.zero)) {
+      await audioPlayer.seek(Duration.zero);
+      await audioPlayer.play();
+    } else if (audioPlayer.playing) {
+      await audioPlayer.pause();
+    } else {
+      await audioPlayer.play();
+    }
+  }
+
+  void _showFullScreenPlayer(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FullScreenPlayer(
+          audioPlayer: audioPlayer,
+          text: text,
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$minutes:$seconds";
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final firstLetter = text.isNotEmpty ? text[0].toUpperCase() : 'T';
 
     return Container(
       height: 80,
@@ -57,6 +87,33 @@ class AudioPlayerBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
+                // Cover Letter
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.primaryContainer,
+                        theme.colorScheme.primary.withOpacity(0.7),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      firstLetter,
+                      style: GoogleFonts.inter(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,77 +129,67 @@ class AudioPlayerBar extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       StreamBuilder<PositionData>(
                         stream: _positionDataStream,
                         builder: (context, snapshot) {
                           final positionData = snapshot.data ??
-                              PositionData(
-                                  Duration.zero, Duration.zero, Duration.zero);
+                              PositionData(Duration.zero, Duration.zero, Duration.zero);
 
-                          return Stack(
+                          return Row(
                             children: [
-                              // Buffered Progress
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(2),
-                                child: LinearProgressIndicator(
-                                  value: positionData.duration.inMilliseconds >
-                                          0
-                                      ? positionData
-                                              .bufferedPosition.inMilliseconds /
-                                          positionData.duration.inMilliseconds
-                                      : 0,
-                                  backgroundColor: theme
-                                      .colorScheme.onSecondaryContainer
-                                      .withOpacity(0.12),
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    theme.colorScheme.onSecondaryContainer
-                                        .withOpacity(0.24),
-                                  ),
-                                  minHeight: 4,
+                              Text(
+                                _formatDuration(positionData.position),
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSecondaryContainer.withOpacity(0.7),
                                 ),
                               ),
-                              // Actual Progress
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(2),
-                                child: LinearProgressIndicator(
-                                  value: positionData.duration.inMilliseconds >
-                                          0
-                                      ? positionData.position.inMilliseconds /
-                                          positionData.duration.inMilliseconds
-                                      : 0,
-                                  backgroundColor: Colors.transparent,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    theme.colorScheme.onSecondaryContainer,
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderThemeData(
+                                    trackHeight: 4,
+                                    thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 4,
+                                    ),
+                                    overlayShape: const RoundSliderOverlayShape(
+                                      overlayRadius: 12,
+                                    ),
+                                    activeTrackColor: theme.colorScheme.primary,
+                                    inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+                                    thumbColor: theme.colorScheme.primary,
+                                    overlayColor: theme.colorScheme.primary.withOpacity(0.12),
                                   ),
-                                  minHeight: 4,
+                                  child: Slider(
+                                    min: 0.0,
+                                    max: positionData.duration.inMilliseconds.toDouble(),
+                                    value: positionData.position.inMilliseconds
+                                        .clamp(0, positionData.duration.inMilliseconds)
+                                        .toDouble(),
+                                    onChanged: (value) {
+                                      audioPlayer.seek(
+                                        Duration(milliseconds: value.round()),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDuration(positionData.duration),
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSecondaryContainer.withOpacity(0.7),
                                 ),
                               ),
                             ],
                           );
                         },
                       ),
-                      const SizedBox(height: 4),
-                      StreamBuilder<PositionData>(
-                        stream: _positionDataStream,
-                        builder: (context, snapshot) {
-                          final positionData = snapshot.data ??
-                              PositionData(
-                                  Duration.zero, Duration.zero, Duration.zero);
-                          return Text(
-                            '${_formatDuration(positionData.position)} / ${_formatDuration(positionData.duration)}',
-                            style: GoogleFonts.inter(
-                              color: theme.colorScheme.onSecondaryContainer
-                                  .withOpacity(0.7),
-                              fontSize: 12,
-                            ),
-                          );
-                        },
-                      ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
                 StreamBuilder<PlayerState>(
                   stream: audioPlayer.playerStateStream,
                   builder: (context, snapshot) {
@@ -150,88 +197,52 @@ class AudioPlayerBar extends StatelessWidget {
                     final processingState = playerState?.processingState;
                     final playing = playerState?.playing;
 
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.replay_10_rounded,
-                            color: theme.colorScheme.onSecondaryContainer,
-                          ),
-                          iconSize: 20,
-                          onPressed: () => audioPlayer.seek(
-                            audioPlayer.position - const Duration(seconds: 10),
-                          ),
+                    IconData icon;
+                    if (processingState == ProcessingState.completed) {
+                      icon = Icons.replay_rounded;
+                    } else if (playing == true) {
+                      icon = Icons.pause_rounded;
+                    } else {
+                      icon = Icons.play_arrow_rounded;
+                    }
+
+                    return IconButton(
+                      onPressed: _handlePlayPause,
+                      icon: Icon(
+                        icon,
+                        color: theme.colorScheme.onSecondaryContainer,
+                        size: 32,
+                      ),
+                    );
+                  },
+                ),
+                StreamBuilder<double>(
+                  stream: audioPlayer.speedStream,
+                  builder: (context, snapshot) {
+                    final speed = snapshot.data ?? 1.0;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${speed}x',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.onSecondaryContainer
-                                .withOpacity(0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            icon: Icon(
-                              (processingState == ProcessingState.loading ||
-                                      processingState ==
-                                          ProcessingState.buffering)
-                                  ? Icons.hourglass_bottom_rounded
-                                  : playing ?? false
-                                      ? Icons.pause_rounded
-                                      : Icons.play_arrow_rounded,
-                              size: 24,
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
-                            onPressed: () {
-                              if (playing ?? false) {
-                                context
-                                    .read<TextToSpeechBloc>()
-                                    .add(PauseAudio());
-                              } else {
-                                context
-                                    .read<TextToSpeechBloc>()
-                                    .add(PlayAudio());
-                              }
-                            },
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.forward_10_rounded,
-                            color: theme.colorScheme.onSecondaryContainer,
-                          ),
-                          iconSize: 20,
-                          onPressed: () => audioPlayer.seek(
-                            audioPlayer.position + const Duration(seconds: 10),
-                          ),
-                        ),
-                      ],
+                      ),
                     );
                   },
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$minutes:$seconds';
-  }
-
-  void _showFullScreenPlayer(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => FullScreenPlayer(
-          audioPlayer: audioPlayer,
-          text: text,
         ),
       ),
     );

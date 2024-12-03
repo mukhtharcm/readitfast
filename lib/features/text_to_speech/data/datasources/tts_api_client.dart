@@ -4,7 +4,10 @@ import '../models/tts_response.dart';
 
 part 'tts_api_client.g.dart';
 
-@RestApi(baseUrl: "http://localhost:8787")
+// const baseUrl = 'http://localhost:8787';
+const baseUrl = 'https://lol.76545689.xyz';
+
+@RestApi(baseUrl: baseUrl)
 abstract class TTSApiClient {
   factory TTSApiClient(Dio dio, {String baseUrl}) = _TTSApiClient;
 

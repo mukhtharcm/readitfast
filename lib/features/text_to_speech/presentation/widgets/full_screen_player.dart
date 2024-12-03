@@ -24,9 +24,37 @@ class FullScreenPlayer extends StatelessWidget {
             PositionData(position, bufferedPosition, duration ?? Duration.zero),
       );
 
+  void _handlePlayPause() async {
+    if (audioPlayer.position >= (audioPlayer.duration ?? Duration.zero)) {
+      await audioPlayer.seek(Duration.zero);
+      await audioPlayer.play();
+    } else if (audioPlayer.playing) {
+      await audioPlayer.pause();
+    } else {
+      await audioPlayer.play();
+    }
+  }
+
+  void _cyclePlaybackSpeed() {
+    final currentSpeed = audioPlayer.speed;
+    final speeds = [0.5, 1.0, 1.5, 2.0];
+    final currentIndex = speeds.indexOf(currentSpeed);
+    final nextIndex = (currentIndex + 1) % speeds.length;
+    audioPlayer.setSpeed(speeds[nextIndex]);
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$minutes:$seconds";
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final firstLetter = text.isNotEmpty ? text[0].toUpperCase() : 'T';
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
@@ -41,161 +69,280 @@ class FullScreenPlayer extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 32),
-              // Text Display
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(24),
+        child: Column(
+          children: [
+            const SizedBox(height: 32),
+            // Cover Art
+            Container(
+              width: 280,
+              height: 280,
+              margin: const EdgeInsets.symmetric(horizontal: 40),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primaryContainer,
+                    theme.colorScheme.primary.withOpacity(0.7),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Center(
                 child: Text(
-                  text,
+                  firstLetter,
                   style: GoogleFonts.inter(
-                    fontSize: 16,
-                    height: 1.5,
-                    color: theme.colorScheme.onPrimaryContainer,
+                    fontSize: 120,
+                    fontWeight: FontWeight.bold,
+                    color:
+                        theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
                   ),
                 ),
               ),
-              const Spacer(),
-              // Audio Progress
-              StreamBuilder<PositionData>(
-                stream: _positionDataStream,
-                builder: (context, snapshot) {
-                  final positionData = snapshot.data ??
-                      PositionData(Duration.zero, Duration.zero, Duration.zero);
-
-                  return Column(
-                    children: [
-                      SliderTheme(
-                        data: SliderThemeData(
-                          trackHeight: 4,
-                          thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 6,
-                          ),
-                          overlayShape: const RoundSliderOverlayShape(
-                            overlayRadius: 14,
-                          ),
-                          activeTrackColor: theme.colorScheme.primary,
-                          inactiveTrackColor: theme.colorScheme.surfaceVariant,
-                          thumbColor: theme.colorScheme.primary,
-                          overlayColor: theme.colorScheme.primary.withOpacity(0.12),
-                        ),
-                        child: Slider(
-                          min: 0.0,
-                          max: positionData.duration.inMilliseconds.toDouble(),
-                          value: positionData.position.inMilliseconds.toDouble(),
-                          onChanged: (value) {
-                            audioPlayer.seek(
-                              Duration(milliseconds: value.round()),
-                            );
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatDuration(positionData.position),
-                              style: GoogleFonts.inter(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              _formatDuration(positionData.duration),
-                              style: GoogleFonts.inter(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
+            ),
+            const SizedBox(height: 48),
+            // Text Preview
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                text,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  height: 1.5,
+                  color: theme.colorScheme.onSurface,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
-              // Playback Controls
-              StreamBuilder<PlayerState>(
-                stream: audioPlayer.playerStateStream,
-                builder: (context, snapshot) {
-                  final playerState = snapshot.data;
-                  final processingState = playerState?.processingState;
-                  final playing = playerState?.playing;
+            ),
+            const Spacer(),
+            // Progress Bar
+            StreamBuilder<PositionData>(
+              stream: _positionDataStream,
+              builder: (context, snapshot) {
+                final positionData = snapshot.data ??
+                    PositionData(Duration.zero, Duration.zero, Duration.zero);
 
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                return Column(
+                  children: [
+                    // Time indicators
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _formatDuration(positionData.position),
+                            style: GoogleFonts.inter(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            _formatDuration(positionData.duration),
+                            style: GoogleFonts.inter(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Progress Slider
+                    SliderTheme(
+                      data: SliderThemeData(
+                        trackHeight: 4,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 6,
+                        ),
+                        overlayShape: const RoundSliderOverlayShape(
+                          overlayRadius: 14,
+                        ),
+                        activeTrackColor: theme.colorScheme.primary,
+                        inactiveTrackColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        thumbColor: theme.colorScheme.primary,
+                        overlayColor:
+                            theme.colorScheme.primary.withOpacity(0.12),
+                      ),
+                      child: Slider(
+                        min: 0.0,
+                        max: positionData.duration.inMilliseconds.toDouble(),
+                        value: positionData.position.inMilliseconds
+                            .clamp(0, positionData.duration.inMilliseconds)
+                            .toDouble(),
+                        onChanged: (value) {
+                          audioPlayer.seek(
+                            Duration(milliseconds: value.round()),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            // Controls
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 8, 32, 48),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  StreamBuilder<double>(
+                    stream: audioPlayer.speedStream,
+                    builder: (context, snapshot) {
+                      final speed = snapshot.data ?? 1.0;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: InkWell(
+                          onTap: _cyclePlaybackSpeed,
+                          child: Text(
+                            '${speed}x',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.replay_10_rounded),
                         iconSize: 32,
-                        onPressed: () => audioPlayer.seek(
-                          audioPlayer.position - const Duration(seconds: 10),
-                        ),
+                        color: theme.colorScheme.onSurface,
+                        onPressed: () {
+                          final newPosition = audioPlayer.position -
+                              const Duration(seconds: 10);
+                          audioPlayer.seek(
+                            Duration(
+                                milliseconds: newPosition.inMilliseconds.clamp(
+                                    0,
+                                    audioPlayer.duration?.inMilliseconds ?? 0)),
+                          );
+                        },
                       ),
-                      const SizedBox(width: 24),
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          icon: Icon(
-                            (processingState == ProcessingState.loading ||
-                                    processingState == ProcessingState.buffering)
-                                ? Icons.hourglass_bottom_rounded
-                                : playing ?? false
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded,
-                            size: 32,
-                          ),
-                          onPressed: () {
-                            if (playing ?? false) {
-                              context.read<TextToSpeechBloc>().add(PauseAudio());
-                            } else {
-                              context.read<TextToSpeechBloc>().add(PlayAudio());
-                            }
-                          },
-                        ),
+                      const SizedBox(width: 16),
+                      StreamBuilder<PlayerState>(
+                        stream: audioPlayer.playerStateStream,
+                        builder: (context, snapshot) {
+                          final playerState = snapshot.data;
+                          final processingState = playerState?.processingState;
+                          final playing = playerState?.playing;
+
+                          IconData icon;
+                          if (processingState == ProcessingState.completed) {
+                            icon = Icons.replay_rounded;
+                          } else if (playing == true) {
+                            icon = Icons.pause_circle_filled_rounded;
+                          } else {
+                            icon = Icons.play_circle_filled_rounded;
+                          }
+
+                          return Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.colorScheme.primaryContainer,
+                            ),
+                            child: IconButton(
+                              onPressed: _handlePlayPause,
+                              icon: Icon(
+                                icon,
+                                color: theme.colorScheme.onPrimaryContainer,
+                                size: 40,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 16),
                       IconButton(
                         icon: const Icon(Icons.forward_10_rounded),
                         iconSize: 32,
-                        onPressed: () => audioPlayer.seek(
-                          audioPlayer.position + const Duration(seconds: 10),
-                        ),
+                        color: theme.colorScheme.onSurface,
+                        onPressed: () {
+                          final newPosition = audioPlayer.position +
+                              const Duration(seconds: 10);
+                          audioPlayer.seek(
+                            Duration(
+                                milliseconds: newPosition.inMilliseconds.clamp(
+                                    0,
+                                    audioPlayer.duration?.inMilliseconds ?? 0)),
+                          );
+                        },
                       ),
                     ],
-                  );
-                },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.text_snippet_rounded),
+                    iconSize: 24,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: theme.colorScheme.surface,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                        ),
+                        builder: (context) => Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Full Text',
+                                style: GoogleFonts.inter(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                text,
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  height: 1.5,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 48),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$minutes:$seconds';
   }
 }
 

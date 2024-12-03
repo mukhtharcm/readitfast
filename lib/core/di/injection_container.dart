@@ -15,7 +15,7 @@ Future<void> init() async {
 
   // API Client
   sl.registerLazySingleton(
-    () => TTSApiClient(sl(), baseUrl: 'http://localhost:8787'),
+    () => TTSApiClient(sl(), baseUrl: baseUrl),
   );
 
   // Repository
