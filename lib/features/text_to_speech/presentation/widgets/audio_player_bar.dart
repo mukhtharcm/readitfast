@@ -108,7 +108,8 @@ class AudioPlayerBar extends StatelessWidget {
                       style: GoogleFonts.inter(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onPrimaryContainer.withOpacity(0.8),
+                        color: theme.colorScheme.onPrimaryContainer
+                            .withOpacity(0.8),
                       ),
                     ),
                   ),
@@ -134,7 +135,8 @@ class AudioPlayerBar extends StatelessWidget {
                         stream: _positionDataStream,
                         builder: (context, snapshot) {
                           final positionData = snapshot.data ??
-                              PositionData(Duration.zero, Duration.zero, Duration.zero);
+                              PositionData(
+                                  Duration.zero, Duration.zero, Duration.zero);
 
                           return Row(
                             children: [
@@ -142,7 +144,8 @@ class AudioPlayerBar extends StatelessWidget {
                                 _formatDuration(positionData.position),
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
-                                  color: theme.colorScheme.onSecondaryContainer.withOpacity(0.7),
+                                  color: theme.colorScheme.onSecondaryContainer
+                                      .withOpacity(0.7),
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -157,15 +160,21 @@ class AudioPlayerBar extends StatelessWidget {
                                       overlayRadius: 12,
                                     ),
                                     activeTrackColor: theme.colorScheme.primary,
-                                    inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+                                    inactiveTrackColor: theme
+                                        .colorScheme.surfaceContainerHighest,
                                     thumbColor: theme.colorScheme.primary,
-                                    overlayColor: theme.colorScheme.primary.withOpacity(0.12),
+                                    overlayColor: theme.colorScheme.primary
+                                        .withOpacity(0.12),
                                   ),
                                   child: Slider(
                                     min: 0.0,
-                                    max: positionData.duration.inMilliseconds.toDouble(),
+                                    max: positionData.duration.inMilliseconds
+                                        .toDouble(),
                                     value: positionData.position.inMilliseconds
-                                        .clamp(0, positionData.duration.inMilliseconds)
+                                        .clamp(
+                                            0,
+                                            positionData
+                                                .duration.inMilliseconds)
                                         .toDouble(),
                                     onChanged: (value) {
                                       audioPlayer.seek(
@@ -180,7 +189,8 @@ class AudioPlayerBar extends StatelessWidget {
                                 _formatDuration(positionData.duration),
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
-                                  color: theme.colorScheme.onSecondaryContainer.withOpacity(0.7),
+                                  color: theme.colorScheme.onSecondaryContainer
+                                      .withOpacity(0.7),
                                 ),
                               ),
                             ],

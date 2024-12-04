@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:readitfast/core/di/injection_container.dart' as di;
 import 'package:readitfast/features/text_to_speech/presentation/bloc/text_to_speech_bloc.dart';
-import 'package:readitfast/features/text_to_speech/presentation/pages/home_page.dart';
+import 'package:readitfast/features/text_to_speech/presentation/pages/root_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 
@@ -23,17 +23,19 @@ class MainApp extends StatelessWidget {
         repository: di.sl(),
       ),
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         title: 'ReadItFast',
         theme: FlexThemeData.light(
-          scheme: FlexScheme.materialBaseline,
+          scheme: FlexScheme.blackWhite,
+          // scheme: FlexScheme.indigo,
           textTheme: GoogleFonts.interTextTheme(),
         ),
         themeMode: ThemeMode.system,
         darkTheme: FlexThemeData.dark(
-          scheme: FlexScheme.blue,
+          scheme: FlexScheme.blackWhite,
           textTheme: GoogleFonts.interTextTheme(),
         ),
-        home: const HomePage(),
+        home: const RootPage(),
       ),
     );
   }
